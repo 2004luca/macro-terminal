@@ -234,8 +234,8 @@ with tab_br:
         selic = sgs.get({"SELIC": 432},   start=start, end=end).dropna()
         ipca  = sgs.get({"IPCA": 433},    start=start, end=end).dropna()
         gdp_raw = sgs.get({"GDP": 4380}, start=start, end=end).dropna()["GDP"]
-        gdp = ((gdp_raw / gdp_raw.shift(12)) - 1) * 100
-        gdp = gdp.dropna()    
+        gdp = gdp_raw.pct_change() * 100
+        gdp = gdp.dropna()   
         unemp = sgs.get({"UNEMP": 13522}, start=start, end=end).dropna()
 
         # IPCA accumulated 12 months — rolling sum of monthly readings
@@ -290,14 +290,15 @@ with tab_br:
     )
 
     # GDP
-    st.markdown("### 📌 GDP Growth (YoY)")
+    st.markdown("### 📌 GDP Growth (QoQ)")
     st.markdown("""
-Brazil's **GDP growth** shown as year-over-year % change — 
-how much the economy grew compared to the same month one year earlier.
-This smooths out seasonal effects and gives a cleaner picture of the trend.
+Brazil's **GDP growth** shown as quarter-over-quarter % change — 
+the pace of growth from one quarter to the next.
+Due to Brazil's data structure, this can be volatile month-to-month 
+but gives a timely picture of economic momentum.
 """)
     st.plotly_chart(
-    plot_series(br["gdp"], "Brazil GDP Growth (YoY %)", "Growth (%)",
+    plot_series(br["gdp"], "Brazil GDP Growth (QoQ %)", "Growth (%)",
                color="#00ff88", hline=0, hline_label="Recession threshold"),
     use_container_width=True
 )
@@ -889,3 +890,108 @@ with tab_uk:
                    color="#ff6b6b", hline=0, hline_label="Neutral"),
         use_container_width=True
     )
+# --- GLOBAL COMPARISON TAB ---
+with tab_compare:
+    st.subheader("📊 Global Macro Comparison")
+    st.markdown("""
+    A side-by-side comparison of key macro indicators across major economies.
+    This is how macro traders and portfolio managers think about **relative value** — 
+    which countries offer the best risk-adjusted returns, and where capital is likely to flow.
+    """)
+
+    with st.spinner("Loading global comparison data..."):
+        us  = get_us_data()
+        br  = get_brazil_data()
+        eu  = get_europe_data()
+        uk  = get_uk_data()
+        jp  = get_japan_data()
+        cn  = get_china_data()
+
+    def latest(series):
+        return round(series.iloc[-1], 2)
+
+    comparison = {
+        "Country":         ["🇺🇸 USA", "🇧🇷 Brazil", "🇪🇺 Europe", "🇬🇧 UK", "🇯🇵 Japan", "🇨🇳 China"],
+        "Policy Rate (%)": [latest(us["fed"]), latest(br["selic"]), latest(eu["ecb_rate"]), latest(uk["boe"]), latest(jp["boj"]), latest(cn["pboc"])],
+        "Inflation (%)":   [latest(us["cpi_yoy"]), latest(br["ipca_12m"]), latest(eu["cpi"]), latest(uk["cpi"]), latest(jp["cpi"]), latest(cn["cpi"])],
+        "Real Rate (%)":   [latest(us["real_rate"]), latest(br["real_rate"]), latest(eu["real_rate"]), latest(uk["real_rate"]), latest(jp["real_rate"]), latest(cn["real_rate"])],
+        "GDP Growth (%)":  [latest(us["gdp_growth"]), latest(br["gdp"]), latest(eu["gdp"]), latest(uk["gdp"]), latest(jp["gdp"]), latest(cn["gdp"])],
+    }
+
+    df_compare = pd.DataFrame(comparison)
+
+    st.divider()
+    st.subheader("📋 Key Indicators at a Glance")
+    st.dataframe(df_compare, use_container_width=True, hide_index=True)
+
+    st.divider()
+    st.subheader("🏦 Real Interest Rates — Where is Capital Flowing?")
+    st.markdown("""
+    The **real interest rate** is the single most important variable for understanding 
+    global capital flows. Money flows to where real returns are highest — 
+    this is the foundation of carry trades and relative value macro strategies.
+    """)
+
+    fig_real = go.Figure()
+    fig_real.add_trace(go.Bar(
+        x=df_compare["Country"],
+        y=df_compare["Real Rate (%)"],
+        marker_color=["#00d4ff", "#00ff88", "#ffaa00", "#ff99cc", "#ff6b6b", "#ff00ff"],
+        name="Real Rate"
+    ))
+    fig_real.add_hline(y=0, line_dash="dash", line_color="white")
+    fig_real.update_layout(
+        yaxis_title="Real Rate (%)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        height=350,
+    )
+    st.plotly_chart(fig_real, use_container_width=True)
+
+    st.divider()
+    st.subheader("📈 Policy Rates vs Inflation")
+    st.markdown("""
+    When the **policy rate bar is above the inflation bar**, real rates are positive — 
+    monetary policy is restrictive. When below, real rates are negative and policy is stimulative.
+    """)
+
+    fig_vs = go.Figure()
+    fig_vs.add_trace(go.Bar(
+        x=df_compare["Country"],
+        y=df_compare["Policy Rate (%)"],
+        name="Policy Rate",
+        marker_color="#00d4ff"
+    ))
+    fig_vs.add_trace(go.Bar(
+        x=df_compare["Country"],
+        y=df_compare["Inflation (%)"],
+        name="Inflation",
+        marker_color="#ff6b6b"
+    ))
+    fig_vs.update_layout(
+        barmode="group",
+        yaxis_title="Rate (%)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        height=350,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02)
+    )
+    st.plotly_chart(fig_vs, use_container_width=True)
+
+    st.divider()
+    st.markdown("""
+    ### 🔍 How to Read This as a Macro Trader
+    
+    **High real rates attract capital** — investors move money to countries where 
+    they earn the most after inflation. This strengthens the currency and supports bonds.
+    
+    **Low or negative real rates repel capital** — investors seek better returns elsewhere, 
+    weakening the currency. Central banks may need to raise rates to defend the exchange rate.
+    
+    **The carry trade** — borrowing in low-rate currencies (historically JPY, now also EUR) 
+    and investing in high-rate currencies (historically BRL, TRY, ZAR) is one of the most 
+    common macro strategies. It works until it doesn't — when risk sentiment shifts, 
+    carry trades unwind rapidly and violently, as seen in August 2024 with the Yen.
+    """)
