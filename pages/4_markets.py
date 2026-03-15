@@ -278,3 +278,263 @@ fig_vol.update_layout(
 )
 
 st.plotly_chart(fig_vol, use_container_width=True)
+
+st.divider()
+
+st.divider()
+
+# --- SECTION 3+4: SECTORS & CORRELATIONS ---
+
+st.subheader("🏭 Sectors & Correlations")
+st.markdown("""
+The S&P 500 is divided into **11 sectors**. Understanding sector dynamics — 
+what's in each sector, how they perform over time, and how they correlate — 
+is fundamental to equity analysis and portfolio construction.
+""")
+
+@st.cache_data(ttl=3600)
+def get_sector_data():
+    """
+    Fetches price history for all S&P 500 sector ETFs.
+    SPDR Sector ETFs by State Street — the most liquid sector vehicles.
+    """
+    sectors = {
+        "Technology":             "XLK",
+        "Financials":             "XLF",
+        "Energy":                 "XLE",
+        "Health Care":            "XLV",
+        "Industrials":            "XLI",
+        "Consumer Discretionary": "XLY",
+        "Consumer Staples":       "XLP",
+        "Materials":              "XLB",
+        "Utilities":              "XLU",
+        "Real Estate":            "XLRE",
+        "Communication Services": "XLC",
+    }
+
+    data = {}
+    for name, ticker in sectors.items():
+        df = yf.download(ticker, start="2000-01-01", progress=False)
+        data[name] = df["Close"].squeeze().dropna()
+
+    return data
+
+with st.spinner("Loading sector data..."):
+    sector_data = get_sector_data()
+
+# Sector metadata
+sector_info = {
+    "Technology": {
+        "description": "Companies that develop software, hardware, and semiconductors. The largest sector in the S&P 500.",
+        "companies": "Apple, Microsoft, NVIDIA, Broadcom, Salesforce",
+        "macro_sensitivity": "🔴 High — very sensitive to interest rates. Long-duration assets: valued on future earnings discounted at current rates.",
+    },
+    "Financials": {
+        "description": "Banks, insurance companies, asset managers, and payment processors.",
+        "companies": "JPMorgan, Berkshire Hathaway, Visa, Mastercard, Bank of America",
+        "macro_sensitivity": "🟡 Medium — benefits from higher rates (wider lending margins) but hurt by recessions (credit losses).",
+    },
+    "Energy": {
+        "description": "Oil & gas exploration, production, refining, and services companies.",
+        "companies": "ExxonMobil, Chevron, ConocoPhillips, EOG Resources, Schlumberger",
+        "macro_sensitivity": "🟡 Medium — driven by oil prices, which depend on global growth and geopolitics.",
+    },
+    "Health Care": {
+        "description": "Pharmaceuticals, biotech, medical devices, and managed care organizations.",
+        "companies": "UnitedHealth, Johnson & Johnson, Eli Lilly, AbbVie, Pfizer",
+        "macro_sensitivity": "🟢 Low — defensive sector. Demand is inelastic — people need healthcare regardless of the economy.",
+    },
+    "Industrials": {
+        "description": "Aerospace, defense, machinery, transportation, and construction companies.",
+        "companies": "GE Aerospace, Caterpillar, Honeywell, Union Pacific, Boeing",
+        "macro_sensitivity": "🟡 Medium — cyclical. Performs well in expansions, suffers in slowdowns.",
+    },
+    "Consumer Discretionary": {
+        "description": "Companies selling non-essential goods and services — cars, retail, restaurants, entertainment.",
+        "companies": "Amazon, Tesla, Home Depot, McDonald's, Nike",
+        "macro_sensitivity": "🔴 High — very cyclical. Consumers cut discretionary spending first in downturns.",
+    },
+    "Consumer Staples": {
+        "description": "Companies selling essential goods — food, beverages, household products, tobacco.",
+        "companies": "Procter & Gamble, Coca-Cola, PepsiCo, Walmart, Costco",
+        "macro_sensitivity": "🟢 Low — defensive. People buy toothpaste and food regardless of the economy.",
+    },
+    "Materials": {
+        "description": "Mining, chemicals, paper, and packaging companies.",
+        "companies": "Linde, Sherwin-Williams, Air Products, Freeport-McMoRan, Newmont",
+        "macro_sensitivity": "🟡 Medium — tied to global growth and commodity prices. China demand is key.",
+    },
+    "Utilities": {
+        "description": "Electric, gas, and water utilities. Highly regulated, capital-intensive businesses.",
+        "companies": "NextEra Energy, Southern Company, Duke Energy, Dominion Energy",
+        "macro_sensitivity": "🟢 Low — defensive but rate-sensitive. High debt loads make utilities vulnerable to rising rates.",
+    },
+    "Real Estate": {
+        "description": "REITs (Real Estate Investment Trusts) — companies that own income-producing properties.",
+        "companies": "Prologis, American Tower, Equinix, Crown Castle, Simon Property",
+        "macro_sensitivity": "🔴 High — very sensitive to interest rates. REITs are valued like bonds — higher rates hurt valuations.",
+    },
+    "Communication Services": {
+        "description": "Telecom, media, entertainment, and social media companies.",
+        "companies": "Meta, Alphabet, Netflix, Disney, T-Mobile",
+        "macro_sensitivity": "🟡 Medium — mix of defensive (telecom) and growth (social media/streaming).",
+    },
+}
+
+# Tabs
+tab_ytd, tab_hist, tab_info, tab_corr = st.tabs([
+    "📊 YTD Performance",
+    "📈 Historical Performance",
+    "🏢 Sector Guide",
+    "🔗 Correlation Matrix"
+])
+
+# --- YTD TAB ---
+with tab_ytd:
+    ytd_rows = []
+    for name, series in sector_data.items():
+        start_price = series[series.index.year == series.index[-1].year].iloc[0]
+        current = series.iloc[-1]
+        ytd = round((current / start_price - 1) * 100, 2)
+        ytd_rows.append({"Sector": name, "YTD (%)": ytd})
+
+    df_ytd = pd.DataFrame(ytd_rows).sort_values("YTD (%)", ascending=False)
+    colors = ["#00ff88" if v >= 0 else "#ff6b6b" for v in df_ytd["YTD (%)"]]
+
+    fig_ytd = go.Figure()
+    fig_ytd.add_trace(go.Bar(
+        x=df_ytd["Sector"],
+        y=df_ytd["YTD (%)"],
+        marker_color=colors,
+        text=[f"{v:+.2f}%" for v in df_ytd["YTD (%)"]],
+        textposition="outside",
+    ))
+    fig_ytd.add_hline(y=0, line_dash="dash", line_color="white")
+    fig_ytd.update_layout(
+        yaxis_title="YTD Return (%)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        height=450,
+        margin=dict(t=40, b=100)
+    )
+    st.plotly_chart(fig_ytd, use_container_width=True)
+
+    st.markdown("""
+    **Sector rotation signal:** Look at which sectors are leading.
+    - Defensives leading (Staples, Utilities, Health Care) → late cycle, risk-off
+    - Cyclicals leading (Tech, Discretionary, Financials) → early/mid cycle, risk-on
+    - Energy leading → inflation concerns, commodity supercycle
+    """)
+    st.markdown("""
+**YTD (Year-to-Date)** measures how much each sector has returned since the first trading day 
+of the current year. It's the most common way to compare performance across assets 
+on a level playing field — everyone starts at zero on January 1st.
+""")
+
+# --- HISTORICAL TAB ---
+with tab_hist:
+    st.markdown("Compare sector performance over time — normalized to 100 at your chosen start date.")
+
+    selected_sectors = st.multiselect(
+        "Select sectors:",
+        options=list(sector_data.keys()),
+        default=["Technology", "Energy", "Consumer Staples", "Financials"]
+    )
+
+    start_hist = st.date_input(
+        "Start date:",
+        value=pd.Timestamp("2015-01-01"),
+        min_value=pd.Timestamp("2000-01-01"),
+        max_value=pd.Timestamp.today(),
+        key="sector_start"
+    )
+
+    fig_hist = go.Figure()
+    for name in selected_sectors:
+        series = sector_data[name]
+        series = series[series.index >= pd.Timestamp(start_hist)]
+        normalized = (series / series.iloc[0]) * 100
+
+        fig_hist.add_trace(go.Scatter(
+            x=normalized.index,
+            y=normalized.values,
+            mode="lines",
+            name=name
+        ))
+
+    fig_hist.update_layout(
+        yaxis_title="Indexed to 100",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        hovermode="x unified",
+        height=450,
+    )
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+# --- SECTOR GUIDE TAB ---
+with tab_info:
+    st.markdown("A guide to each S&P 500 sector — what's in it, key companies, and macro sensitivity.")
+
+    for sector, info in sector_info.items():
+        with st.expander(f"**{sector}**"):
+            st.markdown(f"**What it is:** {info['description']}")
+            st.markdown(f"**Key companies:** {info['companies']}")
+            st.markdown(f"**Macro sensitivity:** {info['macro_sensitivity']}")
+
+# --- CORRELATION MATRIX TAB ---
+with tab_corr:
+    st.markdown("""
+    ### What is a Correlation Matrix?
+    
+    A **correlation** measures how two assets move together, on a scale from -1 to +1:
+    - **+1.0** → perfect positive correlation — they always move together
+    - **0.0** → no correlation — they move independently
+    - **-1.0** → perfect negative correlation — when one goes up, the other goes down
+    
+    **Why traders use it:**
+    - **Portfolio diversification** — combining low-correlation assets reduces risk
+    - **Pair trading** — trading the spread between highly correlated assets
+    - **Risk management** — understanding how positions interact in a portfolio
+    """)
+    st.info("**Rule of thumb:** Correlation > 0.7 = highly correlated. Correlation < 0.3 = low correlation.")
+
+    # Build returns dataframe for correlation
+    returns_dict = {}
+    for name, series in sector_data.items():
+        returns_dict[name] = series.pct_change().dropna()
+
+    df_returns = pd.DataFrame(returns_dict).dropna()
+    corr_matrix = df_returns.corr().round(2)
+
+    import plotly.figure_factory as ff
+
+    fig_corr = ff.create_annotated_heatmap(
+        z=corr_matrix.values,
+        x=list(corr_matrix.columns),
+        y=list(corr_matrix.index),
+        annotation_text=corr_matrix.values.round(2),
+        colorscale="RdBu",
+        reversescale=True,
+        zmin=-1, zmax=1,
+        showscale=True,
+    )
+
+    fig_corr.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        height=550,
+        margin=dict(t=40, b=100, l=100)
+    )
+
+    st.plotly_chart(fig_corr, use_container_width=True)
+
+    st.markdown("""
+    **What to look for:**
+    - **Cyclicals cluster together** — Tech, Discretionary, Financials tend to be highly correlated
+    - **Defensives cluster together** — Staples, Utilities, Health Care move similarly
+    - **Energy is different** — driven by oil prices, often has lower correlation with the rest
+    - **Real Estate is rate-sensitive** — correlates more with Utilities than Tech
+    """)
