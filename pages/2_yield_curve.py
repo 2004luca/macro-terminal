@@ -10,17 +10,11 @@ from fredapi import Fred
 # --- DATA ---
 
 @st.cache_data(ttl=3600)
-def get_yield_curve():
+def get_yield_curve_annual():
     """
-    Fetches US Treasury yields from FRED.
-    
-    @st.cache_data → caches the result for 1 hour (3600 seconds)
-    This avoids hitting the API every time the page reloads.
-    
-    Maturities fetched:
-        DGS1MO → 1M | DGS3MO → 3M | DGS6MO → 6M
-        DGS1 → 1Y   | DGS2 → 2Y   | DGS5 → 5Y
-        DGS7 → 7Y   | DGS10 → 10Y | DGS20 → 20Y | DGS30 → 30Y
+    Fetches US Treasury yields sampled once per year.
+    Used for curve shape comparison — keeps loading fast.
+    Note: for daily precision, a full dataset would be required.
     """
     fred = Fred(api_key=st.secrets["FRED_API_KEY"])
 
@@ -39,74 +33,88 @@ def get_yield_curve():
 
     yields = {}
     for label, series_id in maturities.items():
-        series = fred.get_series(series_id).dropna()
+        series = fred.get_series(series_id, observation_start="2000-01-01").dropna()
+        # Take one snapshot per year — first business day of each year
+        series = series.resample("YS").first().dropna()
         yields[label] = series
 
-    df = pd.DataFrame(yields)
+    df = pd.DataFrame(yields).dropna()
     df.index = pd.to_datetime(df.index)
-    df = df.dropna()
-
     return df
 
 
-def get_spread_2y10y(df):
+@st.cache_data(ttl=3600)
+def get_spread_data():
     """
-    Calculates the 2y-10y spread over time.
-    Negative = inverted curve = recession signal.
+    Fetches daily 2Y and 10Y yields for the spread chart.
+    Only 2 series — loads much faster than full curve data.
     """
-    return df["10Y"] - df["2Y"]
+    fred = Fred(api_key=st.secrets["FRED_API_KEY"])
+    dgs2  = fred.get_series("DGS2",  observation_start="2000-01-01").dropna()
+    dgs10 = fred.get_series("DGS10", observation_start="2000-01-01").dropna()
+
+    df = pd.DataFrame({"2Y": dgs2, "10Y": dgs10}).dropna()
+    df.index = pd.to_datetime(df.index)
+    df["Spread"] = df["10Y"] - df["2Y"]
+    return df
 
 
 # --- PAGE LAYOUT ---
 
 st.title("📉 Yield Curve")
-st.markdown("US Treasury yield curve — the most important macro indicator.")
+st.markdown("""
+The yield curve is one of the most powerful tools in macroeconomics. 
+It shows the interest rates on US government bonds across different maturities — 
+from 1 month to 30 years — and its shape tells us a lot about where the economy is headed.
+""")
 st.divider()
 
-with st.spinner("Loading yield curve data..."):
-    df = get_yield_curve()
-    spread = get_spread_2y10y(df)
 
-# --- SECTION 1: CURRENT CURVE ---
+# --- SECTION 1: CURVE COMPARISON ---
 
-latest = df.iloc[-1]
-latest_date = df.index[-1].strftime("%B %d, %Y")
+st.subheader("📊 Yield Curve Comparison")
+st.markdown("""
+Select two years to compare how the yield curve has shifted over time.  
+Each dot represents the yield investors demanded for lending money to the US government 
+for that specific period.
 
-st.subheader(f"Current Yield Curve — {latest_date}")
+> ⚠️ **Note:** To keep this tool fast, we display one snapshot per year 
+> (first available trading day of January). A full daily dataset would require 
+> significantly longer loading times.
+""")
 
-# Date picker for historical comparison
-compare_date = st.date_input(
-    "📅 Compare with historical date:",
-    value=pd.Timestamp("2020-01-01"),
-    min_value=df.index[0].date(),
-    max_value=df.index[-1].date(),
-)
+df_annual = get_yield_curve_annual()
+available_years = df_annual.index.year.tolist()
 
-# Find the closest available date in the dataset
-compare_ts = pd.Timestamp(compare_date)
-closest_idx = df.index.get_indexer([compare_ts], method="nearest")[0]
-compare_row = df.iloc[closest_idx]
-compare_label = df.index[closest_idx].strftime("%B %d, %Y")
+col1, col2 = st.columns(2)
+with col1:
+    year_a = st.selectbox("📅 Year A", options=available_years[::-1], index=0)
+with col2:
+    year_b = st.selectbox("📅 Year B", options=available_years[::-1], index=5)
 
-# Build comparison chart
+row_a = df_annual[df_annual.index.year == year_a].iloc[0]
+row_b = df_annual[df_annual.index.year == year_b].iloc[0]
+date_a = df_annual[df_annual.index.year == year_a].index[0].strftime("%B %d, %Y")
+date_b = df_annual[df_annual.index.year == year_b].index[0].strftime("%B %d, %Y")
+
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(
-    x=list(latest.index),
-    y=list(latest.values),
+    x=list(row_a.index),
+    y=list(row_a.values),
     mode="lines+markers",
     line=dict(color="#00d4ff", width=2),
     marker=dict(size=8),
-    name=f"Current ({latest_date})"
+    name=f"{year_a} ({date_a})"
 ))
 
 fig.add_trace(go.Scatter(
-    x=list(compare_row.index),
-    y=list(compare_row.values),
+    x=list(row_b.index),
+    y=list(row_b.values),
     mode="lines+markers",
     line=dict(color="#ff6b6b", width=2, dash="dash"),
     marker=dict(size=8),
-    name=f"Historical ({compare_label})"
+    name=f"{year_b} ({date_b})"
 ))
 
 fig.update_layout(
@@ -123,16 +131,28 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
+
 # --- SECTION 2: 2Y-10Y SPREAD ---
 
-st.subheader("📊 2Y-10Y Spread — Recession Indicator")
+st.subheader("📈 2Y-10Y Spread — Recession Indicator")
 st.markdown("""
-The **2Y-10Y spread** is the difference between the 10-year and 2-year Treasury yields.  
-- **Positive** → normal curve, healthy economy  
-- **Negative** → inverted curve, recession signal ⚠️  
+The **2Y-10Y spread** is the difference between the 10-year and 2-year Treasury yields.
+It is the single most watched recession indicator in macroeconomics.
 
-Every US recession in the last 50 years was preceded by an inversion.
+- **Positive spread** → normal curve, long-term yields higher than short-term
+- **Negative spread (inversion)** → short-term yields higher than long-term ⚠️
+
+**Why does inversion signal recession?**  
+When short-term rates exceed long-term rates, banks become less profitable — 
+they borrow short and lend long, so their margin shrinks. 
+This leads to tighter credit conditions, less lending, less investment, 
+and ultimately slower economic growth.
+
+Every US recession in the last 50 years was preceded by a yield curve inversion.
 """)
+
+df_spread = get_spread_data()
+spread = df_spread["Spread"]
 
 fig2 = go.Figure()
 
@@ -146,7 +166,6 @@ fig2.add_trace(go.Scatter(
     name="2Y-10Y Spread"
 ))
 
-# Zero line — the inversion threshold
 fig2.add_hline(
     y=0,
     line_dash="dash",
@@ -166,9 +185,70 @@ fig2.update_layout(
 
 st.plotly_chart(fig2, use_container_width=True)
 
-# Current spread value
 current_spread = round(spread.iloc[-1], 2)
 if current_spread < 0:
     st.error(f"⚠️ Current 2Y-10Y Spread: **{current_spread}%** — Curve is INVERTED")
 else:
     st.success(f"✅ Current 2Y-10Y Spread: **{current_spread}%** — Curve is normal")
+
+st.divider()
+
+
+# --- SECTION 3: YIELD CURVE SHAPES ---
+
+st.subheader("📚 Understanding Yield Curve Shapes")
+st.markdown("""
+The yield curve doesn't always look the same. Its shape changes depending on 
+what investors expect about the future of the economy and interest rates.
+There are three main shapes you need to know:
+""")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("### 🟢 Normal")
+    st.markdown("""
+    **Short-term yields < Long-term yields**
+    
+    The healthy default state. Investors demand higher return 
+    for locking up money longer — this is the **term premium**.
+    
+    **What it signals:**
+    - Economy is growing
+    - Inflation is under control
+    - No immediate recession expected
+    
+    **Example:** 2010–2021, post-crisis recovery.
+    """)
+
+with col2:
+    st.markdown("### 🟡 Flat")
+    st.markdown("""
+    **Short-term yields ≈ Long-term yields**
+    
+    Flattens when the Fed raises short-term rates while 
+    long-term rates stay anchored — market expects rate cuts ahead.
+    
+    **What it signals:**
+    - Transition period
+    - Uncertainty about growth
+    - Often a warning before inversion
+    
+    **Example:** Mid-2019 and early 2022.
+    """)
+
+with col3:
+    st.markdown("### 🔴 Inverted")
+    st.markdown("""
+    **Short-term yields > Long-term yields**
+    
+    Investors expect the Fed to cut rates — usually because 
+    they anticipate a recession. The most watched recession signal in macro.
+    
+    **What it signals:**
+    - Market pricing in economic slowdown
+    - Fed likely to cut rates ahead
+    - Preceded every US recession historically
+    
+    **Example:** 2006–2007, 2022–2024.
+    """)
