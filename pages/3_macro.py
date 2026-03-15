@@ -525,7 +525,6 @@ with tab_jp:
         plot_series(jp["boj"], "BOJ Policy Rate", "Rate (%)"),
         use_container_width=True
     )
-    st.info("📌 **Note:** FRED data for the BOJ rate is available until 2023. Following the historic rate hikes of 2024, the BOJ rate currently stands at ~0.5% — the highest level since 2008.")
 
     # CPI
     st.markdown("### 📌 Inflation (CPI YoY)")
@@ -602,6 +601,146 @@ with tab_jp:
     """)
     st.plotly_chart(
         plot_series(jp["real_rate"], "Japan Real Interest Rate", "Rate (%)",
+                   color="#ff6b6b", hline=0, hline_label="Neutral"),
+        use_container_width=True
+    )
+# --- CHINA TAB ---
+with tab_cn:
+    st.subheader("🇨🇳 China — Macro Overview")
+
+    @st.cache_data(ttl=3600)
+    def get_china_data():
+        """
+        Fetches Chinese macro indicators from FRED.
+        
+        Series:
+            INTDSRCNM193N    → PBoC Interest Rate
+            CHNCPIALLMINMEI  → CPI China (index level)
+            MKTGDPCNA646NWDB → GDP China (annual, current USD)
+            LRUNTTTTCNM156S  → China Unemployment Rate
+        """
+        fred = Fred(api_key=st.secrets["FRED_API_KEY"])
+        start = "2000-01-01"
+
+        pboc = fred.get_series("INTDSRCNM193N", observation_start=start).dropna()
+
+        cpi_raw = fred.get_series("CHNCPIALLMINMEI", observation_start=start).dropna()
+        cpi = ((cpi_raw / cpi_raw.shift(12)) - 1) * 100
+        cpi = cpi.dropna()
+
+        gdp_raw = fred.get_series("MKTGDPCNA646NWDB", observation_start=start).dropna()
+        gdp = gdp_raw.pct_change() * 100
+        gdp = gdp.dropna()
+        real_rate = pboc - cpi.reindex(pboc.index, method="ffill")
+        real_rate = real_rate.dropna()
+
+        return {
+            "pboc":      pboc,
+            "cpi":       cpi,
+            "gdp":       gdp,
+            "unemp":     None,
+            "real_rate": real_rate,
+        }
+
+    with st.spinner("Loading China data..."):
+        cn = get_china_data()
+
+    # PBoC Rate
+    st.markdown("### 📌 PBoC Lending Rate")
+    st.markdown("""
+    The **People's Bank of China (PBoC)** is China's central bank. Unlike the Fed or ECB, 
+    the PBoC operates within a tightly controlled financial system where the government 
+    plays a direct role in credit allocation.
+    
+    China's monetary policy is less transparent than Western central banks — 
+    the PBoC uses multiple tools simultaneously: reserve requirements, lending quotas, 
+    exchange rate management, and interest rates.
+    
+    **Key context:**
+    - China has been in a **structural easing cycle** since 2021 to combat a property sector crisis
+    - The property market collapse (Evergrande, Country Garden) wiped out ~$1 trillion in wealth
+    - Unlike Western countries, China's challenge post-COVID was **deflation**, not inflation
+    - The PBoC has limited room to cut — already at historically low rates
+    """)
+    st.plotly_chart(
+        plot_series(cn["pboc"], "PBoC Lending Rate", "Rate (%)"),
+        use_container_width=True
+    )
+
+    # CPI
+    st.markdown("### 📌 Inflation (CPI YoY)")
+    st.markdown("""
+    China's inflation picture is **structurally different** from Western economies. 
+    While the US and Europe fought high inflation in 2022-2023, China was facing 
+    **deflationary pressures** — a sign of weak domestic demand rather than overheating.
+    
+    **Why is China facing deflation?**
+    - The property crisis destroyed household wealth (70% of Chinese savings are in real estate)
+    - Consumer confidence collapsed after COVID lockdowns
+    - Overcapacity in manufacturing pushes goods prices down
+    - Demographics — aging population spends less
+    
+    This is China's biggest macro challenge today: how to stimulate domestic demand 
+    when consumers are deleveraging and confidence is low.
+    """)
+    st.plotly_chart(
+        plot_series(cn["cpi"], "CPI YoY (%)", "Inflation (%)",
+                   color="#ffaa00", hline=2.0, hline_label="Target ~2%"),
+        use_container_width=True
+    )
+
+    # GDP
+    st.markdown("### 📌 GDP Growth (YoY)")
+    st.markdown("""
+    China's GDP growth has been one of the most remarkable stories in economic history — 
+    averaging nearly **10% per year for three decades**, lifting 800 million people out of poverty.
+    
+    However, the era of double-digit growth is over. China is now in a **structural slowdown**:
+    - The easy gains from urbanization and industrialization are exhausted
+    - Debt levels have reached unsustainable levels (property + local government debt)
+    - The US-China tech war is limiting access to semiconductors and advanced technology
+    - Demographics are turning negative — workforce is shrinking
+    
+    The official GDP target of **~5%** is increasingly questioned by economists who 
+    believe actual growth may be lower than reported figures.
+    """)
+    st.plotly_chart(
+        plot_series(cn["gdp"], "China GDP Growth YoY (%)", "Growth (%)",
+                   color="#00ff88", hline=5.0, hline_label="Official target ~5%"),
+        use_container_width=True
+    )
+
+    # Unemployment
+    st.markdown("### 📌 Unemployment Rate")
+    st.markdown("""
+    China's official unemployment data is **not reliably available** through international sources. 
+    The government only publishes urban registered unemployment, which excludes the ~300 million 
+    migrant workers — making it largely meaningless as a macro indicator.
+    
+    A more telling indicator is **youth unemployment**, which reached a record **21.3% in 2023** 
+    before the government **stopped publishing the data entirely** — itself a significant signal 
+    about the reliability of Chinese economic statistics.
+    """)
+    st.warning("⚠️ Reliable unemployment data for China is not available via public APIs.")
+
+    # Real Rate
+    st.markdown("### 📌 Real Interest Rate")
+    st.markdown("""
+    China's real interest rate has been oscillating around zero — 
+    sometimes slightly positive, sometimes negative depending on the inflation cycle.
+    """)
+    st.info("**How it's calculated:** Real Rate = PBoC Lending Rate − CPI YoY")
+    st.markdown("""
+    With deflation returning in 2023-2024, China's real rates have actually been 
+    **rising despite nominal rate cuts** — because falling prices increase the real 
+    cost of debt. This is the classic deflation trap: real debt burdens increase 
+    even as nominal rates fall, discouraging borrowing and investment.
+    
+    This is exactly what Japan experienced in the 1990s — and why economists worry 
+    China could be entering its own "Lost Decade."
+    """)
+    st.plotly_chart(
+        plot_series(cn["real_rate"], "China Real Interest Rate", "Rate (%)",
                    color="#ff6b6b", hline=0, hline_label="Neutral"),
         use_container_width=True
     )
