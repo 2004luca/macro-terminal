@@ -110,10 +110,11 @@ how each indicator affects the economy and financial markets.
 st.divider()
 
 # Country tabs
-tab_us, tab_br, tab_eu, tab_jp, tab_cn, tab_compare = st.tabs([
+tab_us, tab_br, tab_eu, tab_uk, tab_jp, tab_cn, tab_compare = st.tabs([
     "🇺🇸 United States",
     "🇧🇷 Brazil",
     "🇪🇺 Europe",
+    "🇬🇧 United Kingdom",
     "🇯🇵 Japan",
     "🇨🇳 China",
     "📊 Global Comparison"
@@ -741,6 +742,150 @@ with tab_cn:
     """)
     st.plotly_chart(
         plot_series(cn["real_rate"], "China Real Interest Rate", "Rate (%)",
+                   color="#ff6b6b", hline=0, hline_label="Neutral"),
+        use_container_width=True
+    )
+# --- UK TAB ---
+with tab_uk:
+    st.subheader("🇬🇧 United Kingdom — Macro Overview")
+
+    @st.cache_data(ttl=3600)
+    def get_uk_data():
+        fred = Fred(api_key=st.secrets["FRED_API_KEY"])
+        start = "2007-01-01"
+
+    # BoE rate
+        boe = fred.get_series("IUDSOIA", observation_start=start).dropna()
+
+    # CPI UK
+        cpi_raw = fred.get_series("GBRCPIALLMINMEI", observation_start=start).dropna()
+        cpi = ((cpi_raw / cpi_raw.shift(12)) - 1) * 100
+        cpi = cpi.dropna()
+
+    # GDP UK
+        gdp_raw = fred.get_series("NAEXKP01GBQ652S", observation_start=start).dropna()
+        gdp = gdp_raw.pct_change() * 100
+        gdp = gdp.dropna()
+
+    # Unemployment UK
+        unemp = fred.get_series("LRHUTTTTGBQ156S", observation_start=start).dropna()
+
+    # Real rate
+        real_rate = boe - cpi.reindex(boe.index, method="ffill")
+        real_rate = real_rate.dropna()
+
+        return {
+            "boe":       boe,
+            "cpi":       cpi,
+            "gdp":       gdp,
+            "unemp":     unemp,
+            "real_rate": real_rate,
+        }
+
+    with st.spinner("Loading UK data..."):
+        uk = get_uk_data()
+
+    # BoE Rate
+    st.markdown("### 📌 Bank of England Base Rate")
+    st.markdown("""
+    The **Bank of England (BoE)** is one of the oldest central banks in the world, 
+    founded in 1694. It became formally independent in **1997** — a landmark moment 
+    in UK monetary policy history.
+    
+    The UK's rate cycle closely mirrors the Fed but with its own dynamics:
+    - **2008-2021** → rates at historic lows following the financial crisis
+    - **2021-2023** → aggressive hiking cycle to combat post-COVID inflation
+    - **2022** → the **Liz Truss mini-budget crisis** — an unfunded £45bn tax cut plan 
+    caused Gilt yields to spike, the pound to crash, and forced the BoE to intervene 
+    as an emergency buyer of bonds to prevent pension fund collapse
+    - **2024 onwards** → cutting cycle began as inflation returned toward target
+    """)
+    st.plotly_chart(
+        plot_series(uk["boe"], "BoE Base Rate", "Rate (%)"),
+        use_container_width=True
+    )
+
+    # CPI
+    st.markdown("### 📌 Inflation (CPI YoY)")
+    st.markdown("""
+    The UK experienced **persistently higher inflation** than its peers post-COVID — 
+    one of the worst inflation episodes among developed economies.
+    
+    **Why was UK inflation so sticky?**
+    - **Energy dependence** — the UK is heavily exposed to global gas prices
+    - **Brexit effects** — reduced labor supply from EU workers pushed wages up
+    - **Supply chain disruptions** — both COVID and Brexit simultaneously disrupted imports
+    - **Tight labor market** — unemployment at historic lows kept wage growth elevated
+    
+    The BoE was criticized for being **too slow to hike** in 2021, allowing inflation 
+    to become entrenched — a key lesson in central bank communication and credibility.
+    """)
+    st.plotly_chart(
+        plot_series(uk["cpi"], "CPI YoY (%)", "Inflation (%)",
+                   color="#ffaa00", hline=2.0, hline_label="BoE 2% target"),
+        use_container_width=True
+    )
+
+    # GDP
+    st.markdown("### 📌 GDP Growth (QoQ)")
+    st.markdown("""
+    The UK economy has faced significant structural headwinds since the **2016 Brexit referendum**. 
+    While the immediate post-referendum recession was avoided, the long-term costs 
+    are visible in slower investment, reduced trade, and lower productivity growth.
+    
+    Key events in the data:
+    - **2008-2009** → severe recession from the financial crisis
+    - **2020** → one of the deepest COVID contractions among G7 economies
+    - **2022** → brief technical recession as energy shock and rate hikes hit simultaneously
+    
+    **Brexit's macro impact:**  
+    The UK went from being one of the fastest-growing G7 economies pre-2016 
+    to one of the slowest post-Brexit — a structural shift visible in the GDP trend.
+    """)
+    st.plotly_chart(
+        plot_series(uk["gdp"], "UK GDP Growth QoQ (%)", "Growth (%)",
+                   color="#00ff88", hline=0, hline_label="Recession threshold"),
+        use_container_width=True
+    )
+
+    # Unemployment
+    st.markdown("### 📌 Unemployment Rate")
+    st.markdown("""
+    UK unemployment has been remarkably low in recent years — a paradox given 
+    sluggish economic growth. This reflects the **post-Brexit labor market tightening**: 
+    EU workers returning home reduced labor supply, pushing unemployment down 
+    even as the economy slowed.
+    
+    This created a difficult situation for the BoE: low unemployment meant wage 
+    pressures remained high, keeping services inflation elevated even as goods 
+    inflation fell — forcing the BoE to keep rates higher for longer.
+    """)
+    st.plotly_chart(
+        plot_series(uk["unemp"], "UK Unemployment Rate", "Rate (%)",
+                   color="#ffaa00"),
+        use_container_width=True
+    )
+
+    # Real Rate
+    st.markdown("### 📌 Real Interest Rate")
+    st.markdown("""
+    The UK's real interest rate tells the story of a central bank that was **behind the curve** — 
+    real rates were deeply negative in 2022 as inflation surged while the BoE hiked too slowly.
+    """)
+    st.info("**How it's calculated:** Real Rate = BoE Base Rate − CPI YoY")
+    st.markdown("""
+    The Liz Truss episode of September 2022 is a perfect case study in how 
+    **fiscal and monetary policy can clash**:
+    - Government announced massive unfunded spending → bond market panicked
+    - Gilt yields spiked → pension funds using liability-driven investment (LDI) faced margin calls
+    - BoE had to simultaneously hike rates (fight inflation) AND buy bonds (prevent financial collapse)
+    - Truss resigned after 45 days — the shortest UK premiership in history
+    
+    This episode shows that even developed market governments are not immune 
+    to bond market discipline when fiscal credibility is lost.
+    """)
+    st.plotly_chart(
+        plot_series(uk["real_rate"], "UK Real Interest Rate", "Rate (%)",
                    color="#ff6b6b", hline=0, hline_label="Neutral"),
         use_container_width=True
     )
