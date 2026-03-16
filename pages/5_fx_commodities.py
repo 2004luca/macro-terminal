@@ -148,7 +148,11 @@ fig_dxy.add_trace(go.Scatter(
 
 for date, label in fed_events:
     ts = pd.Timestamp(date)
+    if ts < dxy.index[0] or ts > dxy.index[-1]:
+        continue
     price = dxy.asof(ts)
+    if pd.isna(price):
+        continue
     fig_dxy.add_annotation(
         x=ts, y=price,
         text=label,
