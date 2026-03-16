@@ -146,24 +146,28 @@ fig_dxy.add_trace(go.Scatter(
     name="DXY"
 ))
 
-for date, label in fed_events:
-    ts = pd.Timestamp(date)
-    if ts < dxy.index[0] or ts > dxy.index[-1]:
-        continue
-    price = dxy.asof(ts)
-    if pd.isna(price):
-        continue
-    fig_dxy.add_annotation(
-        x=ts, y=price,
-        text=label,
-        showarrow=True,
-        arrowhead=2,
-        arrowcolor="white",
-        font=dict(color="white", size=9),
-        bgcolor="rgba(0,0,0,0.6)",
-        bordercolor="white",
-        borderwidth=1,
-    )
+if len(dxy) > 0:
+    for date, label in fed_events:
+        try:
+            ts = pd.Timestamp(date)
+            if ts < dxy.index[0] or ts > dxy.index[-1]:
+                continue
+            price = dxy.asof(ts)
+            if pd.isna(price):
+                continue
+            fig_dxy.add_annotation(
+                x=ts, y=price,
+                text=label,
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor="white",
+                font=dict(color="white", size=9),
+                bgcolor="rgba(0,0,0,0.6)",
+                bordercolor="white",
+                borderwidth=1,
+            )
+        except Exception:
+            continue
 
 fig_dxy.update_layout(
     yaxis_title="DXY",
