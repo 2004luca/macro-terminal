@@ -189,7 +189,9 @@ fx_pairs = ["USD/BRL", "EUR/USD", "USD/JPY", "GBP/USD"]
 
 fx_rows = []
 for name in fx_pairs:
-    series = fx_data[name]
+    series = fx_data.get(name, pd.Series(dtype=float))
+    if len(series) == 0:
+        continue
     current_year = series.index[-1].year
     start_price = series[series.index.year == current_year].iloc[0]
     current = series.iloc[-1]
@@ -233,7 +235,7 @@ start_fx = st.date_input(
 
 fig_fx = go.Figure()
 for name in selected_fx:
-    series = fx_data[name]
+    series = fx_data.get(name, pd.Series(dtype=float))
     series = series[series.index >= pd.Timestamp(start_fx)]
     normalized = (series / series.iloc[0]) * 100
 
@@ -511,7 +513,9 @@ start_comm = st.date_input(
 
 fig_comm = go.Figure()
 for name in selected_comm:
-    series = comm_data[name]
+    series = comm_data.get(name, pd.Series(dtype=float))
+    if len(series) == 0:
+        continue
     series = series[series.index >= pd.Timestamp(start_comm)]
     normalized = (series / series.iloc[0]) * 100
     fig_comm.add_trace(go.Scatter(
@@ -626,12 +630,12 @@ and **changing relationships** between assets.
 
 # Build full commodity dataset for quant section
 quant_assets = {
-    "Gold":        comm_data["Gold"],
-    "Silver":      comm_data["Silver"],
-    "Copper":      comm_data["Copper"],
-    "WTI Oil":     comm_data["WTI Oil"],
-    "Natural Gas": comm_data["Natural Gas"],
-    "DXY":         fx_data["DXY"],
+    "Gold":        comm_data.get("Gold",        pd.Series(dtype=float)),
+    "Silver":      comm_data.get("Silver",      pd.Series(dtype=float)),
+    "Copper":      comm_data.get("Copper",      pd.Series(dtype=float)),
+    "WTI Oil":     comm_data.get("WTI Oil",     pd.Series(dtype=float)),
+    "Natural Gas": comm_data.get("Natural Gas", pd.Series(dtype=float)),
+    "DXY":         fx_data.get("DXY",           pd.Series(dtype=float)),
 }
 
 tab_zscore, tab_rolling_corr, tab_ratios = st.tabs([
@@ -833,9 +837,9 @@ with tab_ratios:
     - Mean reversion opportunities
     """)
 
-    gold  = comm_data["Gold"].dropna()
-    silver= comm_data["Silver"].dropna()
-    wti   = comm_data["WTI Oil"].dropna()
+    gold   = comm_data.get("Gold",    pd.Series(dtype=float)).dropna()
+    silver = comm_data.get("Silver",  pd.Series(dtype=float)).dropna()
+    wti    = comm_data.get("WTI Oil", pd.Series(dtype=float)).dropna()
 
     # Align all series
     combined_ratios = pd.DataFrame({
