@@ -12,16 +12,6 @@ import numpy as np
 
 @st.cache_data(ttl=3600)
 def get_fx_data():
-    """
-    Fetches FX and commodity price history via Yahoo Finance.
-    
-    Tickers:
-        DX-Y.NYB → DXY (US Dollar Index)
-        USDBRL=X → USD/BRL
-        EURUSD=X → EUR/USD
-        USDJPY=X → USD/JPY
-        GBPUSD=X → GBP/USD
-    """
     tickers = {
         "DXY":     "DX-Y.NYB",
         "USD/BRL": "USDBRL=X",
@@ -32,8 +22,13 @@ def get_fx_data():
 
     data = {}
     for name, ticker in tickers.items():
-        df = yf.download(ticker, start="2000-01-01", progress=False)
-        data[name] = df["Close"].squeeze().dropna()
+        try:
+            df = yf.download(ticker, start="2000-01-01", progress=False)
+            if df.empty:
+                continue
+            data[name] = df["Close"].squeeze().dropna()
+        except Exception:
+            continue
 
     return data
 
@@ -688,6 +683,8 @@ with tab_zscore:
         rolling_std  = series.rolling(window).std()
         zscore = ((series - rolling_mean) / rolling_std).dropna()
 
+        if len(zscore) == 0 or len(series) == 0:
+            continue
         current_z = round(zscore.iloc[-1], 2)
         current_p = round(series.iloc[-1], 2)
 
