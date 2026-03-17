@@ -426,6 +426,8 @@ colors = {
 for name in selected_risk:
     series = risk_data[name]
     series = series[series.index >= pd.Timestamp(start_risk)]
+    if len(series) == 0:
+        continue
     normalized = (series / series.iloc[0]) * 100
 
     fig_risk.add_trace(go.Scatter(
