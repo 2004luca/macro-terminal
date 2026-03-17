@@ -13,7 +13,7 @@ import numpy as np
 @st.cache_data(ttl=3600)
 def get_fx_data():
     tickers = {
-        "DXY":     "DX-Y.NYB",
+        "DXY":     "DX=F",
         "USD/BRL": "USDBRL=X",
         "EUR/USD": "EURUSD=X",
         "USD/JPY": "USDJPY=X",
