@@ -121,7 +121,7 @@ with col3:
     """)
 
 # DXY chart with Fed events
-dxy = fx_data["DXY"]
+dxy = fx_data.get("DXY", pd.Series(dtype=float))
 
 fed_events = [
     ("2004-06-30", "Fed starts hiking"),
@@ -361,8 +361,8 @@ with col2:
     """)
 
 # WTI vs Brent chart
-wti   = comm_data["WTI Oil"]
-brent = comm_data["Brent Oil"]
+wti   = comm_data.get("WTI Oil",   pd.Series(dtype=float))
+brent = comm_data.get("Brent Oil", pd.Series(dtype=float))
 
 fig_oil = go.Figure()
 
