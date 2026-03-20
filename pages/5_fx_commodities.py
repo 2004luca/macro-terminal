@@ -7,6 +7,20 @@ import plotly.graph_objects as go
 import yfinance as yf
 import numpy as np
 
+def safe_series(series, start_date=None):
+    """
+    Safely filters a series by date.
+    Returns empty series if data is missing or index is not datetime.
+    """
+    if series is None or len(series) == 0:
+        return pd.Series(dtype=float)
+    try:
+        series.index = pd.to_datetime(series.index)
+        if start_date:
+            series = series[series.index >= pd.Timestamp(start_date)]
+        return series.dropna()
+    except Exception:
+        return pd.Series(dtype=float)
 
 # --- DATA FUNCTIONS ---
 
@@ -236,7 +250,7 @@ start_fx = st.date_input(
 fig_fx = go.Figure()
 for name in selected_fx:
     series = fx_data.get(name, pd.Series(dtype=float))
-    series = series[series.index >= pd.Timestamp(start_fx)]
+    series = safe_series(series, start_fx)
     normalized = (series / series.iloc[0]) * 100
 
     fig_fx.add_trace(go.Scatter(
@@ -392,7 +406,7 @@ fig_oil.update_layout(
 )
 
 spread_oil = (brent - wti.reindex(brent.index, method="ffill")).dropna()
-spread_oil = spread_oil[spread_oil.index >= "2007-01-01"]
+spread_oil = safe_series(spread_oil, "2007-01-01")
 
 # WTI-Brent spread
 spread_oil = (brent - wti.reindex(brent.index, method="ffill")).dropna()
@@ -516,7 +530,7 @@ for name in selected_comm:
     series = comm_data.get(name, pd.Series(dtype=float))
     if len(series) == 0:
         continue
-    series = series[series.index >= pd.Timestamp(start_comm)]
+    series = safe_series(series, start_comm)
     normalized = (series / series.iloc[0]) * 100
     fig_comm.add_trace(go.Scatter(
         x=normalized.index,
@@ -724,18 +738,19 @@ with tab_zscore:
     rolling_mean = series.rolling(window).mean()
     rolling_std  = series.rolling(window).std()
     zscore_hist  = ((series - rolling_mean) / rolling_std).dropna()
-    zscore_hist  = zscore_hist[zscore_hist.index >= "2005-01-01"]
+    zscore_hist = safe_series(zscore_hist, "2005-01-01")
 
     fig_z = go.Figure()
-    fig_z.add_trace(go.Scatter(
-        x=zscore_hist.index,
-        y=zscore_hist.values,
-        mode="lines",
-        line=dict(color="#00d4ff", width=1.5),
-        fill="tozeroy",
-        fillcolor="rgba(0, 212, 255, 0.1)",
-        name=f"{selected_z} Z-Score"
-    ))
+    if len(zscore_hist) > 0:
+        fig_z.add_trace(go.Scatter(
+            x=zscore_hist.index,
+            y=zscore_hist.values,
+            mode="lines",
+            line=dict(color="#00d4ff", width=1.5),
+            fill="tozeroy",
+            fillcolor="rgba(0, 212, 255, 0.1)",
+            name=f"{selected_z} Z-Score"
+        ))
     fig_z.add_hline(y=2,  line_dash="dash", line_color="red",
                     annotation_text="+2 (expensive)", annotation_position="right")
     fig_z.add_hline(y=-2, line_dash="dash", line_color="green",
@@ -793,7 +808,7 @@ with tab_rolling_corr:
 
     combined = pd.DataFrame({"a": returns_a, "b": returns_b}).dropna()
     rolling_corr = combined["a"].rolling(roll_window).corr(combined["b"]).dropna()
-    rolling_corr = rolling_corr[rolling_corr.index >= "2005-01-01"]
+    rolling_corr = safe_series(rolling_corr, "2005-01-01")
 
     fig_rc = go.Figure()
     fig_rc.add_trace(go.Scatter(
