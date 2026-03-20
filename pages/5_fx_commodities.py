@@ -29,32 +29,24 @@ def safe_series(series, start_date=None):
 def get_fx_data():
     fred = Fred(api_key=st.secrets["FRED_API_KEY"])
     
-    tickers = {
-        "USD/BRL": "USDBRL=X",
-        "EUR/USD": "EURUSD=X",
-        "USD/JPY": "USDJPY=X",
-        "GBP/USD": "GBPUSD=X",
+    data = {}
+
+    # All FX via FRED — much more stable than yfinance
+    fred_tickers = {
+        "DXY":     "DTWEXBGS",   # Broad Dollar Index
+        "USD/BRL": "DEXBZUS",    # Brazil Real
+        "EUR/USD": "DEXUSEU",    # Euro
+        "USD/JPY": "DEXJPUS",    # Japanese Yen
+        "GBP/USD": "DEXUSUK",    # British Pound
     }
 
-    data = {}
-    
-    # DXY via FRED — more reliable than yfinance
-    try:
-        dxy = fred.get_series("DTWEXBGS", observation_start="2000-01-01").dropna()
-        dxy.index = pd.to_datetime(dxy.index)
-        data["DXY"] = dxy
-    except Exception:
-        data["DXY"] = pd.Series(dtype=float)
-
-    # Other FX pairs via yfinance
-    for name, ticker in tickers.items():
+    for name, series_id in fred_tickers.items():
         try:
-            df = yf.download(ticker, start="2000-01-01", progress=False)
-            if df.empty:
-                continue
-            data[name] = df["Close"].squeeze().dropna()
+            series = fred.get_series(series_id, observation_start="2000-01-01").dropna()
+            series.index = pd.to_datetime(series.index)
+            data[name] = series
         except Exception:
-            continue
+            data[name] = pd.Series(dtype=float)
 
     return data
 
