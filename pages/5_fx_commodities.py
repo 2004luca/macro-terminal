@@ -26,8 +26,9 @@ def safe_series(series, start_date=None):
 
 @st.cache_data(ttl=3600)
 def get_fx_data():
+    fred = Fred(api_key=st.secrets["FRED_API_KEY"])
+    
     tickers = {
-        "DXY":     "DX=F",
         "USD/BRL": "USDBRL=X",
         "EUR/USD": "EURUSD=X",
         "USD/JPY": "USDJPY=X",
@@ -35,6 +36,16 @@ def get_fx_data():
     }
 
     data = {}
+    
+    # DXY via FRED — more reliable than yfinance
+    try:
+        dxy = fred.get_series("DTWEXBGS", observation_start="2000-01-01").dropna()
+        dxy.index = pd.to_datetime(dxy.index)
+        data["DXY"] = dxy
+    except Exception:
+        data["DXY"] = pd.Series(dtype=float)
+
+    # Other FX pairs via yfinance
     for name, ticker in tickers.items():
         try:
             df = yf.download(ticker, start="2000-01-01", progress=False)
