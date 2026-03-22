@@ -908,31 +908,30 @@ with tab_go:
                 value=f"{current_go} barrels/oz",
                 delta=f"Historical avg: {hist_mean_go}"
             )
-
-        fig_go = go.Figure()
-        fig_go.add_trace(go.Scatter(
-            x=gold_oil.index,
-            y=gold_oil.values,
-            mode="lines",
-            line=dict(color="#ffaa00", width=1.5),
-            name="Gold/Oil"
-        ))
-        fig_go.add_hline(
-            y=gold_oil.mean(),
-            line_dash="dash",
-            line_color="white",
-            annotation_text=f"Historical avg: {hist_mean_go}",
-            annotation_position="right"
-        )
-        fig_go.update_layout(
-            yaxis_title="Barrels per oz",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="white"),
-            hovermode="x unified",
-            height=300,
-        )
-        st.plotly_chart(fig_go, use_container_width=True)
+            fig_go = go.Figure()
+            fig_go.add_trace(go.Scatter(
+                x=gold_oil.index,
+                y=gold_oil.values,
+                mode="lines",
+                line=dict(color="#ffaa00", width=1.5),
+                name="Gold/Oil"
+            ))
+            fig_go.add_hline(
+                y=gold_oil.mean(),
+                line_dash="dash",
+                line_color="white",
+                annotation_text=f"Historical avg: {hist_mean_go}",
+                annotation_position="right"
+            )
+            fig_go.update_layout(
+                yaxis_title="Barrels per oz",
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="white"),
+                hovermode="x unified",
+                height=300,
+            )
+            st.plotly_chart(fig_go, use_container_width=True)
 
 with tab_gs:
         st.markdown("""
@@ -964,33 +963,31 @@ with tab_gs:
                 value=f"{current_gs} oz silver per oz gold",
                 delta=f"Historical avg: {hist_mean_gs}"
             )
-
-        fig_gs = go.Figure()
-        fig_gs.add_trace(go.Scatter(
-            x=gold_silver.index,
-            y=gold_silver.values,
-            mode="lines",
-            line=dict(color="#c0c0c0", width=1.5),
-            name="Gold/Silver"
-        ))
-        fig_gs.add_hline(
-            y=gold_silver.mean(),
-            line_dash="dash",
-            line_color="white",
-            annotation_text=f"Historical avg: {hist_mean_gs}",
-            annotation_position="right"
-        )
-        fig_gs.add_hline(y=80, line_dash="dot", line_color="red",
-                         annotation_text="80 — historically high", annotation_position="right")
-        fig_gs.add_hline(y=50, line_dash="dot", line_color="green",
-                         annotation_text="50 — historically low", annotation_position="right")
-
-        fig_gs.update_layout(
-            yaxis_title="Oz silver per oz gold",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="white"),
-            hovermode="x unified",
-            height=300,
-        )
-        st.plotly_chart(fig_gs, use_container_width=True)
+            fig_gs = go.Figure()
+            fig_gs.add_trace(go.Scatter(
+                x=gold_silver.index,
+                y=gold_silver.values,
+                mode="lines",
+                line=dict(color="#c0c0c0", width=1.5),
+                name="Gold/Silver"
+            ))
+            fig_gs.add_hline(
+                y=gold_silver.mean(),
+                line_dash="dash",
+                line_color="white",
+                annotation_text=f"Historical avg: {hist_mean_gs}",
+                annotation_position="right"
+            )
+            fig_gs.add_hline(y=80, line_dash="dot", line_color="red",
+                             annotation_text="80 — historically high", annotation_position="right")
+            fig_gs.add_hline(y=50, line_dash="dot", line_color="green",
+                             annotation_text="50 — historically low", annotation_position="right")
+            fig_gs.update_layout(
+                yaxis_title="Oz silver per oz gold",
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="white"),
+                hovermode="x unified",
+                height=300,
+            )
+            st.plotly_chart(fig_gs, use_container_width=True)
