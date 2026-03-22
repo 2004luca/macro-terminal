@@ -708,7 +708,7 @@ with tab_zscore:
     zscore_rows = []
     for name, series in quant_assets.items():
         series = series.dropna()
-        if len(series) < window:
+        if len(series) < 30:
             continue
         rolling_mean = series.rolling(window).mean()
         rolling_std  = series.rolling(window).std()
