@@ -867,19 +867,21 @@ with tab_ratios:
     silver = comm_data.get("Silver",  pd.Series(dtype=float)).dropna()
     wti    = comm_data.get("WTI Oil", pd.Series(dtype=float)).dropna()
 
-    # Align all series
-    combined_ratios = pd.DataFrame({
-        "Gold":   gold,
-        "Silver": silver,
-        "WTI":    wti
-    }).dropna()
-
-    gold_oil    = combined_ratios["Gold"] / combined_ratios["WTI"]
-    gold_silver = combined_ratios["Gold"] / combined_ratios["Silver"]
+    if len(gold) > 0 and len(wti) > 0 and len(silver) > 0:
+        combined_ratios = pd.DataFrame({
+            "Gold":   gold,
+            "Silver": silver,
+            "WTI":    wti
+        }).dropna()
+        gold_oil    = combined_ratios["Gold"] / combined_ratios["WTI"]
+        gold_silver = combined_ratios["Gold"] / combined_ratios["Silver"]
+    else:
+        gold_oil    = pd.Series(dtype=float)
+        gold_silver = pd.Series(dtype=float)
 
     tab_go, tab_gs = st.tabs(["Gold/Oil Ratio", "Gold/Silver Ratio"])
 
-    with tab_go:
+with tab_go:
         st.markdown("""
         **Gold/Oil Ratio** = Price of Gold ÷ Price of WTI Oil
         
@@ -896,13 +898,16 @@ with tab_ratios:
         while gold surged — one of the most extreme macro dislocations in history.
         """)
 
-        current_go = round(gold_oil.iloc[-1], 1)
-        hist_mean_go = round(gold_oil.mean(), 1)
-        st.metric(
-            label="Current Gold/Oil Ratio",
-            value=f"{current_go} barrels/oz",
-            delta=f"Historical avg: {hist_mean_go}"
-        )
+        if len(gold_oil) == 0:
+            st.warning("Gold/Oil ratio data unavailable at the moment.")
+        else:
+            current_go = round(gold_oil.iloc[-1], 1)
+            hist_mean_go = round(gold_oil.mean(), 1)
+            st.metric(
+                label="Current Gold/Oil Ratio",
+                value=f"{current_go} barrels/oz",
+                delta=f"Historical avg: {hist_mean_go}"
+            )
 
         fig_go = go.Figure()
         fig_go.add_trace(go.Scatter(
@@ -949,13 +954,16 @@ with tab_ratios:
         - **Economic cycle signal** — rising ratio = deteriorating growth outlook
         """)
 
-        current_gs = round(gold_silver.iloc[-1], 1)
-        hist_mean_gs = round(gold_silver.mean(), 1)
-        st.metric(
-            label="Current Gold/Silver Ratio",
-            value=f"{current_gs} oz silver per oz gold",
-            delta=f"Historical avg: {hist_mean_gs}"
-        )
+        if len(gold_silver) == 0:
+            st.warning("Gold/Silver ratio data unavailable at the moment.")
+        else:
+            current_gs = round(gold_silver.iloc[-1], 1)
+            hist_mean_gs = round(gold_silver.mean(), 1)
+            st.metric(
+                label="Current Gold/Silver Ratio",
+                value=f"{current_gs} oz silver per oz gold",
+                delta=f"Historical avg: {hist_mean_gs}"
+            )
 
         fig_gs = go.Figure()
         fig_gs.add_trace(go.Scatter(
