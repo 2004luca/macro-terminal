@@ -64,7 +64,7 @@ def get_commodity_data():
         NG=F  → Natural Gas (futures)
     """
     tickers = {
-        "Gold":        "GC=F",
+        "Gold":        "GLD",
         "Silver":      "SI=F",
         "WTI Oil":     "CL=F",
         "Brent Oil":   "BZ=F",
