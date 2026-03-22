@@ -934,7 +934,7 @@ with tab_go:
         )
         st.plotly_chart(fig_go, use_container_width=True)
 
-    with tab_gs:
+with tab_gs:
         st.markdown("""
         **Gold/Silver Ratio** = Price of Gold ÷ Price of Silver
         
