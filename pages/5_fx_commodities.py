@@ -708,11 +708,13 @@ with tab_zscore:
     zscore_rows = []
     for name, series in quant_assets.items():
         series = series.dropna()
+        if len(series) < window:
+            continue
         rolling_mean = series.rolling(window).mean()
         rolling_std  = series.rolling(window).std()
         zscore = ((series - rolling_mean) / rolling_std).dropna()
 
-        if len(zscore) == 0 or len(series) == 0:
+        if len(zscore) == 0:
             continue
         current_z = round(zscore.iloc[-1], 2)
         current_p = round(series.iloc[-1], 2)
@@ -739,45 +741,49 @@ with tab_zscore:
     st.dataframe(df_zscore, use_container_width=True, hide_index=True)
 
     # Z-score chart
-    selected_z = st.selectbox(
-        "View Z-score history for:",
-        options=list(quant_assets.keys()),
-        key="zscore_select"
-    )
+    available = [k for k, v in quant_assets.items() if len(v.dropna()) >= window]
+    
+    if len(available) == 0:
+        st.warning("Z-score chart unavailable at the moment.")
+    else:
+        selected_z = st.selectbox(
+            "View Z-score history for:",
+            options=available,
+            key="zscore_select"
+        )
 
-    series = quant_assets[selected_z].dropna()
-    rolling_mean = series.rolling(window).mean()
-    rolling_std  = series.rolling(window).std()
-    zscore_hist  = ((series - rolling_mean) / rolling_std).dropna()
-    zscore_hist = safe_series(zscore_hist, "2005-01-01")
+        series = quant_assets[selected_z].dropna()
+        rolling_mean = series.rolling(window).mean()
+        rolling_std  = series.rolling(window).std()
+        zscore_hist  = ((series - rolling_mean) / rolling_std).dropna()
+        zscore_hist = safe_series(zscore_hist, "2005-01-01")
 
-    fig_z = go.Figure()
-    if len(zscore_hist) > 0:
-        fig_z.add_trace(go.Scatter(
-            x=zscore_hist.index,
-            y=zscore_hist.values,
-            mode="lines",
-            line=dict(color="#00d4ff", width=1.5),
-            fill="tozeroy",
-            fillcolor="rgba(0, 212, 255, 0.1)",
-            name=f"{selected_z} Z-Score"
-        ))
-    fig_z.add_hline(y=2,  line_dash="dash", line_color="red",
-                    annotation_text="+2 (expensive)", annotation_position="right")
-    fig_z.add_hline(y=-2, line_dash="dash", line_color="green",
-                    annotation_text="-2 (cheap)", annotation_position="right")
-    fig_z.add_hline(y=0,  line_dash="dot",  line_color="white")
+        fig_z = go.Figure()
+        if len(zscore_hist) > 0:
+            fig_z.add_trace(go.Scatter(
+                x=zscore_hist.index,
+                y=zscore_hist.values,
+                mode="lines",
+                line=dict(color="#00d4ff", width=1.5),
+                fill="tozeroy",
+                fillcolor="rgba(0, 212, 255, 0.1)",
+                name=f"{selected_z} Z-Score"
+            ))
+        fig_z.add_hline(y=2,  line_dash="dash", line_color="red",
+                        annotation_text="+2 (expensive)", annotation_position="right")
+        fig_z.add_hline(y=-2, line_dash="dash", line_color="green",
+                        annotation_text="-2 (cheap)", annotation_position="right")
+        fig_z.add_hline(y=0,  line_dash="dot",  line_color="white")
 
-    fig_z.update_layout(
-        yaxis_title="Z-Score",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="white"),
-        hovermode="x unified",
-        height=350,
-    )
-    st.plotly_chart(fig_z, use_container_width=True)
-
+        fig_z.update_layout(
+            yaxis_title="Z-Score",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="white"),
+            hovermode="x unified",
+            height=350,
+        )
+        st.plotly_chart(fig_z, use_container_width=True)
 # --- ROLLING CORRELATIONS TAB ---
 with tab_rolling_corr:
     st.markdown("""
