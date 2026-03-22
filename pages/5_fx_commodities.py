@@ -482,20 +482,27 @@ they often signal macro shifts before official economic data does.
 
 @st.cache_data(ttl=3600)
 def get_commodity_ytd():
-    """Calculates YTD return for each commodity."""
     rows = []
     for name, series in comm_data.items():
         if name in ["WTI Oil", "Brent Oil"]:
             continue
-        current_year = series.index[-1].year
-        start = series[series.index.year == current_year].iloc[0]
-        current = series.iloc[-1]
-        ytd = round((current / start - 1) * 100, 2)
-        rows.append({
-            "Commodity": name,
-            "Current":   f"{round(current, 2):,.2f}",
-            "YTD (%)":   f"{ytd:+.2f}%",
-        })
+        if len(series) == 0:
+            continue
+        try:
+            current_year = series.index[-1].year
+            start = series[series.index.year == current_year]
+            if len(start) == 0:
+                continue
+            start_price = start.iloc[0]
+            current = series.iloc[-1]
+            ytd = round((current / start_price - 1) * 100, 2)
+            rows.append({
+                "Commodity": name,
+                "Current":   f"{round(current, 2):,.2f}",
+                "YTD (%)":   f"{ytd:+.2f}%",
+            })
+        except Exception:
+            continue
     return pd.DataFrame(rows)
 
 comm_ytd = get_commodity_ytd()
