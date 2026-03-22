@@ -704,7 +704,7 @@ with tab_zscore:
         step=252,
         help="252 = 1 year, 504 = 2 years, 756 = 3 years, 1260 = 5 years"
     )
-
+    st.write({k: len(v.dropna()) for k, v in quant_assets.items()})
     zscore_rows = []
     for name, series in quant_assets.items():
         series = series.dropna()
