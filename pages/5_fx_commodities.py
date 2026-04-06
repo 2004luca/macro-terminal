@@ -515,7 +515,7 @@ def color_ytd(val):
     return ""
 
 st.dataframe(
-    comm_ytd.style.applymap(color_ytd, subset=["YTD (%)"]),
+    comm_ytd.style.map(color_ytd, subset=["YTD (%)"]),
     use_container_width=True,
     hide_index=True
 )
