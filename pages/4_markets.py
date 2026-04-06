@@ -87,7 +87,7 @@ def color_ytd(val):
         return "color: red"
     return ""
 
-styled_ytd = df_ytd.style.applymap(color_ytd, subset=["YTD (%)"])
+styled_ytd = df_ytd.style.map(color_ytd, subset=["YTD (%)"])
 st.dataframe(styled_ytd, use_container_width=True, hide_index=True)
 
 # Historical chart

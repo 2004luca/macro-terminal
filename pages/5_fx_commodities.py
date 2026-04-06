@@ -230,7 +230,7 @@ def color_ytd(val):
     return ""
 
 st.dataframe(
-    df_fx.style.applymap(color_ytd, subset=["YTD (%)"]),
+    df_fx.style.map(color_ytd, subset=["YTD (%)"]),
     use_container_width=True,
     hide_index=True
 )

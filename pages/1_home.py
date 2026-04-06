@@ -167,7 +167,7 @@ with col_left:
             return "color: red"
         return ""
 
-    styled_df = df.style.applymap(color_change, subset=["Change %"])
+    styled_df = df.style.map(color_change, subset=["Change %"])
     st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
 with col_right:
