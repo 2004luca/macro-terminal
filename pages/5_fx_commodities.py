@@ -141,25 +141,27 @@ with col3:
 # DXY chart with Fed events
 dxy = fx_data.get("DXY", pd.Series(dtype=float))
 
-fed_events = [
-    ("2004-06-30", "Fed starts hiking"),
-    ("2007-09-18", "Fed starts cutting"),
-    ("2015-12-16", "Fed first hike post-GFC"),
-    ("2018-12-19", "Fed pauses hiking"),
-    ("2022-03-16", "Fed hiking cycle 2022"),
-    ("2024-09-18", "Fed starts cutting 2024"),
-]
+if len(dxy) == 0:
+    st.warning("DXY data unavailable at the moment.")
+else:
+    fed_events = [
+        ("2004-06-30", "Fed starts hiking"),
+        ("2007-09-18", "Fed starts cutting"),
+        ("2015-12-16", "Fed first hike post-GFC"),
+        ("2018-12-19", "Fed pauses hiking"),
+        ("2022-03-16", "Fed hiking cycle 2022"),
+        ("2024-09-18", "Fed starts cutting 2024"),
+    ]
 
-fig_dxy = go.Figure()
-fig_dxy.add_trace(go.Scatter(
-    x=dxy.index,
-    y=dxy.values,
-    mode="lines",
-    line=dict(color="#00d4ff", width=1.5),
-    name="DXY"
-))
+    fig_dxy = go.Figure()
+    fig_dxy.add_trace(go.Scatter(
+        x=dxy.index,
+        y=dxy.values,
+        mode="lines",
+        line=dict(color="#00d4ff", width=1.5),
+        name="DXY"
+    ))
 
-if len(dxy) > 0:
     for date, label in fed_events:
         try:
             ts = pd.Timestamp(date)
@@ -182,16 +184,16 @@ if len(dxy) > 0:
         except Exception:
             continue
 
-fig_dxy.update_layout(
-    yaxis_title="DXY",
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="white"),
-    hovermode="x unified",
-    height=400,
-)
+    fig_dxy.update_layout(
+        yaxis_title="DXY",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        hovermode="x unified",
+        height=400,
+    )
+    st.plotly_chart(fig_dxy, use_container_width=True)
 
-st.plotly_chart(fig_dxy, use_container_width=True)
 st.divider()
 
 # --- SECTION 2: FX MAJORS ---
