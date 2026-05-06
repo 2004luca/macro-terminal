@@ -31,13 +31,21 @@ def get_fx_data():
     
     data = {}
 
-    # All FX via FRED — much more stable than yfinance
+    # DXY via Yahoo Finance (more stable than FRED)
+    try:
+        dxy_raw = yf.download("DX-Y.NYB", start="2000-01-01", auto_adjust=True)["Close"]
+        dxy_raw = dxy_raw.squeeze().dropna()
+        if isinstance(dxy_raw, pd.DataFrame):
+            dxy_raw = dxy_raw.iloc[:, 0]
+        data["DXY"] = dxy_raw
+    except Exception:
+        data["DXY"] = pd.Series(dtype=float)
+
     fred_tickers = {
-        "DXY":     "DTWEXBGS",   # Broad Dollar Index
-        "USD/BRL": "DEXBZUS",    # Brazil Real
-        "EUR/USD": "DEXUSEU",    # Euro
-        "USD/JPY": "DEXJPUS",    # Japanese Yen
-        "GBP/USD": "DEXUSUK",    # British Pound
+        "USD/BRL": "DEXBZUS",
+        "EUR/USD": "DEXUSEU",
+        "USD/JPY": "DEXJPUS",
+        "GBP/USD": "DEXUSUK",
     }
 
     for name, series_id in fred_tickers.items():
