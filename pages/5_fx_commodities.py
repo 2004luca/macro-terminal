@@ -255,6 +255,8 @@ fig_fx = go.Figure()
 for name in selected_fx:
     series = fx_data.get(name, pd.Series(dtype=float))
     series = safe_series(series, start_fx)
+    if len(series) == 0:
+        continue
     normalized = (series / series.iloc[0]) * 100
 
     fig_fx.add_trace(go.Scatter(
